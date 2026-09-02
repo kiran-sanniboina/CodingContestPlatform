@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { 
   Play, Send, Terminal, Clock, Lock, CheckCircle2, RefreshCw, 
-  LogOut, Trophy, History, ShieldCheck, ChevronRight, RotateCcw, AlertOctagon, XCircle
+  LogOut, Trophy, History, ShieldCheck, ChevronRight, RotateCcw, AlertOctagon, XCircle,
+  Radio, Award, Sparkles, Zap
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -35,6 +36,8 @@ interface Team {
   name: string;
   preferredLanguage: string;
   currentProblem: number;
+  year?: number;
+  members?: string[];
 }
 
 const STARTER_CODE: Record<string, string> = {
@@ -91,6 +94,8 @@ export default function ContestDashboard() {
   const [resultMsg, setResultMsg] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState<string>("00:00:00");
   const [contestEnd, setContestEnd] = useState<number | null>(null);
+  const [contestStatus, setContestStatus] = useState<"NOT_STARTED" | "RUNNING" | "FINISHED">("NOT_STARTED");
+  const [contestName, setContestName] = useState<string>("Final Round Championship");
   const [serverOffset, setServerOffset] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -99,13 +104,14 @@ export default function ContestDashboard() {
 
   // 1-second real-time countdown timer
   useEffect(() => {
-    if (!contestEnd) return;
+    if (!contestEnd || contestStatus !== "RUNNING") return;
 
     const tick = () => {
       const now = Date.now() + serverOffset;
       const diff = contestEnd - now;
       if (diff <= 0) {
         setTimeLeft("00:00:00 (ENDED)");
+        setContestStatus("FINISHED");
         return;
       }
       const hrs = String(Math.floor(diff / (1000 * 60 * 60))).padStart(2, "0");
@@ -117,7 +123,7 @@ export default function ContestDashboard() {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [contestEnd, serverOffset]);
+  }, [contestEnd, serverOffset, contestStatus]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -126,16 +132,36 @@ export default function ContestDashboard() {
       return;
     }
     fetchContestData();
-    const interval = setInterval(fetchContestData, 6000);
+    // Fast polling in lobby (2.5s) so the arena opens immediately when admin hits start
+    const interval = setInterval(fetchContestData, contestStatus === "RUNNING" ? 6000 : 2500);
     return () => clearInterval(interval);
-  }, []);
+  }, [contestStatus]);
 
   const fetchContestData = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
-      // 1. Fetch Team Profile
+      // 1. Fetch Timer Info & Contest Status
+      const contestRes = await fetch(`${API_BASE_URL}/api/contest/current`);
+      let isRunning = false;
+      if (contestRes.ok) {
+        const data = await contestRes.json();
+        if (data.contest) {
+          const status = data.contest.status || "NOT_STARTED";
+          setContestStatus(status);
+          isRunning = status === "RUNNING";
+          if (data.contest.name) setContestName(data.contest.name);
+          if (data.contest.endTime) {
+            const end = new Date(data.contest.endTime).getTime();
+            const serverNow = data.serverTime ? new Date(data.serverTime).getTime() : Date.now();
+            setServerOffset(serverNow - Date.now());
+            setContestEnd(end);
+          }
+        }
+      }
+
+      // 2. Fetch Team Profile
       const teamRes = await fetch(`${API_BASE_URL}/api/contest/team`, {
         headers: { Authorization: "Bearer " + token },
       });
@@ -144,24 +170,16 @@ export default function ContestDashboard() {
         setTeam(teamData);
       }
 
-      // 2. Fetch Problems
-      const probRes = await fetch(`${API_BASE_URL}/api/contest/problems`, {
-        headers: { Authorization: "Bearer " + token },
-      });
-      if (probRes.ok) {
-        const probData: Problem[] = await probRes.json();
-        setProblems(probData);
-      }
-
-      // 3. Fetch Timer Info & Sync Server Offset
-      const contestRes = await fetch(`${API_BASE_URL}/api/contest/current`);
-      if (contestRes.ok) {
-        const data = await contestRes.json();
-        if (data.contest && data.contest.endTime) {
-          const end = new Date(data.contest.endTime).getTime();
-          const serverNow = data.serverTime ? new Date(data.serverTime).getTime() : Date.now();
-          setServerOffset(serverNow - Date.now());
-          setContestEnd(end);
+      // 3. Fetch Problems (only if running or admin)
+      if (isRunning) {
+        const probRes = await fetch(`${API_BASE_URL}/api/contest/problems`, {
+          headers: { Authorization: "Bearer " + token },
+        });
+        if (probRes.ok) {
+          const probData: Problem[] = await probRes.json();
+          if (Array.isArray(probData) && probData.length > 0) {
+            setProblems(probData);
+          }
         }
       }
     } catch (err) {
@@ -301,6 +319,160 @@ export default function ContestDashboard() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-black text-gray-400 font-mono">
         <RefreshCw className="animate-spin mr-2" size={20} /> Loading Contest Environment...
+      </div>
+    );
+  }
+
+  // LOBBY SCREEN (Event About to Start)
+  if (contestStatus === "NOT_STARTED") {
+    return (
+      <div className="min-h-screen w-screen bg-black text-white flex flex-col font-sans select-none overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="h-14 border-b border-[#262626] bg-[#0a0a0a] flex items-center justify-between px-6 z-20 select-none flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="bg-white text-black px-2.5 py-0.5 rounded font-black text-xs">CONTEST LOBBY</span>
+            <span className="text-gray-400 font-mono text-xs">{contestName}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-950/40 border border-yellow-800/50 px-3 py-1 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping" />
+              <span className="font-mono font-bold tracking-wider">STANDING BY</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors border border-[#333] px-3 py-1.5 rounded-lg hover:bg-[#1f1f1f]"
+            >
+              <LogOut size={13} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Center Arena Lobby */}
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-2xl bg-[#0d0d0d] border border-[#222] rounded-2xl p-8 shadow-2xl space-y-8 relative overflow-hidden">
+            {/* Ambient Background Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 bg-yellow-500/10 blur-3xl pointer-events-none rounded-full" />
+
+            {/* Radar / Sonar Pulse Header */}
+            <div className="text-center space-y-3 relative z-10">
+              <div className="relative inline-flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-yellow-500/15 border border-yellow-500/30 flex items-center justify-center animate-ping absolute" />
+                <div className="w-16 h-16 rounded-full bg-[#171717] border border-[#333] flex items-center justify-center shadow-lg relative z-10">
+                  <Clock size={28} className="text-yellow-400" />
+                </div>
+              </div>
+
+              <h1 className="text-3xl font-black tracking-tight text-white uppercase">
+                Event Starting Soon
+              </h1>
+              <p className="text-xs text-gray-400 font-mono max-w-md mx-auto leading-relaxed">
+                The championship problem set is currently sealed. Problems and the code editor will unlock automatically the moment the administrator signals the start.
+              </p>
+            </div>
+
+            {/* Team Dossier Card */}
+            <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 space-y-3 relative z-10">
+              <div className="flex items-center justify-between border-b border-[#222] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck size={18} className="text-green-400" />
+                  <span className="font-bold text-sm text-white">{team?.name || "Participant Team"}</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold bg-white/10 text-white px-2.5 py-0.5 rounded border border-white/10">
+                  Year {team?.year || 1} Division Track
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-xs font-mono text-gray-400 pt-1">
+                <div>
+                  <span className="text-gray-600 block text-[10px] uppercase font-bold tracking-wider">TEAM ID</span>
+                  <span className="text-gray-200">{team?.id || "team1"}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600 block text-[10px] uppercase font-bold tracking-wider">MEMBERS</span>
+                  <span className="text-gray-200">{team?.members?.join(", ") || "Active Participant"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Pre-Select Preferred Language */}
+            <div className="space-y-2 relative z-10">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
+                Select Your Starting Language
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {["JAVA", "CPP", "PYTHON"].map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => handleLanguageChange(lang)}
+                    className={`py-3 rounded-lg font-mono text-xs font-bold border transition-all ${
+                      language === lang
+                        ? "bg-white text-black border-white shadow-lg scale-102"
+                        : "bg-[#121212] text-gray-400 border-[#262626] hover:border-gray-500 hover:text-white"
+                    }`}
+                  >
+                    {lang === "JAVA" ? "Java 21" : lang === "CPP" ? "C++ 20" : "Python 3"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Polling Status Indicator */}
+            <div className="pt-2 border-t border-[#1a1a1a] flex items-center justify-between text-[11px] font-mono text-gray-500 relative z-10">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span>Listening for admin start signal... (auto-unlocking)</span>
+              </div>
+              <button
+                onClick={fetchContestData}
+                className="hover:text-white flex items-center gap-1 transition-colors text-gray-400"
+              >
+                <RefreshCw size={11} /> Refresh
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // CONTEST FINISHED SCREEN
+  if (contestStatus === "FINISHED") {
+    return (
+      <div className="min-h-screen w-screen bg-black text-white flex flex-col font-sans select-none">
+        <header className="h-14 border-b border-[#262626] bg-[#0a0a0a] flex items-center justify-between px-6 z-20 select-none flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="bg-red-500 text-white px-2.5 py-0.5 rounded font-black text-xs">CONTEST CONCLUDED</span>
+            <span className="text-gray-400 font-mono text-xs">{contestName}</span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors border border-[#333] px-3 py-1.5 rounded-lg hover:bg-[#1f1f1f]"
+          >
+            <LogOut size={13} />
+            <span>Sign Out</span>
+          </button>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md bg-[#0d0d0d] border border-[#222] rounded-2xl p-8 shadow-2xl text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-red-950/40 border border-red-800/50 flex items-center justify-center mx-auto text-red-400">
+              <Award size={32} />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-white">CHAMPIONSHIP HAS ENDED</h1>
+              <p className="text-xs text-gray-400 font-mono">
+                Submissions are now closed. You can view the final verified standings on the leaderboard.
+              </p>
+            </div>
+            <Link
+              href="/leaderboard"
+              className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2 shadow-lg"
+            >
+              <Trophy size={16} /> View Final Leaderboard
+            </Link>
+          </div>
+        </main>
       </div>
     );
   }

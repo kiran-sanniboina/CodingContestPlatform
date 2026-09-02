@@ -31,9 +31,7 @@ public class DataInitializer implements CommandLineRunner {
         if (contest == null) {
             contest = new Contest();
             contest.setName("Final Round Championship");
-            contest.setStartTime(Instant.now().minus(15, ChronoUnit.MINUTES));
-            contest.setEndTime(Instant.now().plus(165, ChronoUnit.MINUTES));
-            contest.setStatus(ContestStatus.RUNNING);
+            contest.setStatus(ContestStatus.NOT_STARTED);
             contest = contestRepository.save(contest);
         }
         String contestId = contest.getId();

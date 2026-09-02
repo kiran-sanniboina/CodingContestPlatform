@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
@@ -296,6 +297,90 @@ public class AdminController {
         List<Submission> subs = submissionRepository.findAll();
         subs.sort(Comparator.comparing(Submission::getSubmittedAt, Comparator.nullsLast(Comparator.reverseOrder())));
         return ResponseEntity.ok(subs);
+    }
+
+    // --- 6. Contest Control & Lifecycle ---
+    @GetMapping("/contest")
+    public ResponseEntity<?> getAdminContest() {
+        if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Access denied."));
+        Contest contest = contestRepository.findAll().stream().findFirst().orElseGet(() -> {
+            Contest c = new Contest();
+            c.setName("Final Round Championship");
+            c.setStatus(ContestStatus.NOT_STARTED);
+            return contestRepository.save(c);
+        });
+        return ResponseEntity.ok(Map.of("contest", contest, "serverTime", Instant.now()));
+    }
+
+    @PostMapping("/contest/start")
+    public ResponseEntity<?> startContest(@RequestBody(required = false) Map<String, Object> req) {
+        if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Access denied."));
+        
+        int durationMinutes = 180;
+        if (req != null && req.get("durationMinutes") != null) {
+            try {
+                durationMinutes = Integer.parseInt(req.get("durationMinutes").toString());
+            } catch (Exception ignored) {}
+        }
+        String name = (req != null && req.get("name") != null) ? req.get("name").toString() : "Final Round Championship";
+
+        Contest contest = contestRepository.findAll().stream().findFirst().orElse(new Contest());
+        contest.setName(name);
+        contest.setStartTime(Instant.now());
+        contest.setEndTime(Instant.now().plus(durationMinutes, ChronoUnit.MINUTES));
+        contest.setStatus(ContestStatus.RUNNING);
+        contest = contestRepository.save(contest);
+
+        log.info("Admin STARTED contest '{}' for duration {} minutes", contest.getName(), durationMinutes);
+        return ResponseEntity.ok(Map.of(
+            "message", "Contest started successfully!",
+            "contest", contest,
+            "serverTime", Instant.now()
+        ));
+    }
+
+    @PostMapping("/contest/pause")
+    public ResponseEntity<?> pauseContest() {
+        if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Access denied."));
+        Contest contest = contestRepository.findAll().stream().findFirst().orElse(new Contest());
+        contest.setStatus(ContestStatus.NOT_STARTED);
+        contest = contestRepository.save(contest);
+        log.info("Admin PAUSED contest");
+        return ResponseEntity.ok(Map.of("message", "Contest paused.", "contest", contest));
+    }
+
+    @PostMapping("/contest/end")
+    public ResponseEntity<?> endContest() {
+        if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Access denied."));
+        Contest contest = contestRepository.findAll().stream().findFirst().orElse(new Contest());
+        contest.setStatus(ContestStatus.FINISHED);
+        contest.setEndTime(Instant.now());
+        contest = contestRepository.save(contest);
+        log.info("Admin ENDED contest");
+        return ResponseEntity.ok(Map.of("message", "Contest finished.", "contest", contest));
+    }
+
+    @PostMapping("/contest/reset")
+    public ResponseEntity<?> resetContest() {
+        if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Access denied."));
+        Contest contest = contestRepository.findAll().stream().findFirst().orElse(new Contest());
+        contest.setStatus(ContestStatus.NOT_STARTED);
+        contest.setStartTime(null);
+        contest.setEndTime(null);
+        contest = contestRepository.save(contest);
+
+        // Reset all teams to problem 1
+        List<Team> teams = teamRepository.findAll();
+        for (Team t : teams) {
+            t.setCurrentProblem(1);
+            teamRepository.save(t);
+        }
+
+        // Clear submissions
+        submissionRepository.deleteAll();
+
+        log.info("Admin RESET contest and cleared submissions");
+        return ResponseEntity.ok(Map.of("message", "Contest reset to NOT_STARTED. Submissions cleared.", "contest", contest));
     }
 
     @Data

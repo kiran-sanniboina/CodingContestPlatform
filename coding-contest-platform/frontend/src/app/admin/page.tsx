@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { 
   Plus, Trash2, Save, RefreshCw, Settings, Users, FileCode, CheckCircle2, 
-  Layers, ShieldAlert, ArrowLeft, Eye, Edit3, Award, GraduationCap, ChevronRight, X, Clock
+  Layers, ShieldAlert, ArrowLeft, Eye, Edit3, Award, GraduationCap, ChevronRight, X, Clock,
+  Play, Pause, Square, RotateCcw
 } from "lucide-react";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
@@ -34,12 +35,19 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>({ totalTeams: 0, totalProblems: 0, totalSubmissions: 0, acceptedSubmissions: 0 });
   const [contestTimer, setContestTimer] = useState<string>("00:00:00");
   const [contestEndTime, setContestEndTime] = useState<number | null>(null);
+  const [contestInfo, setContestInfo] = useState<any>(null);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [durationInput, setDurationInput] = useState(180);
+  const [contestActionLoading, setContestActionLoading] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   // Real-time 1s Contest Timer in Admin Header
   useEffect(() => {
-    if (!contestEndTime) return;
+    if (!contestEndTime) {
+      setContestTimer("00:00:00");
+      return;
+    }
     const interval = setInterval(() => {
       const diff = contestEndTime - Date.now();
       if (diff <= 0) {
@@ -59,24 +67,108 @@ export default function AdminDashboard() {
     fetchTeams();
     fetchProblems();
     fetchSubmissions();
-    fetchContestTime();
+    fetchContestInfo();
     const interval = setInterval(() => {
       fetchStats();
       fetchSubmissions();
-    }, 5000);
+      fetchContestInfo();
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchContestTime = async () => {
+  const fetchContestInfo = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/contest/current`);
+      const res = await fetch(`${API_BASE_URL}/api/admin/contest`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
-        if (data.contest && data.contest.endTime) {
+        setContestInfo(data.contest);
+        if (data.contest && data.contest.endTime && data.contest.status === "RUNNING") {
           setContestEndTime(new Date(data.contest.endTime).getTime());
+        } else {
+          setContestEndTime(null);
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleStartContest = async () => {
+    setContestActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/contest/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ durationMinutes: durationInput, name: contestInfo?.name || "Final Round Championship" })
+      });
+      if (res.ok) {
+        setShowStartModal(false);
+        fetchContestInfo();
+        fetchStats();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setContestActionLoading(false);
+    }
+  };
+
+  const handlePauseContest = async () => {
+    if (!confirm("Pause the championship? Participants will be placed back into the lobby.")) return;
+    setContestActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/contest/pause`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchContestInfo();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setContestActionLoading(false);
+    }
+  };
+
+  const handleEndContest = async () => {
+    if (!confirm("End the championship immediately? Submissions will close.")) return;
+    setContestActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/contest/end`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchContestInfo();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setContestActionLoading(false);
+    }
+  };
+
+  const handleResetContest = async () => {
+    if (!confirm("RESET the entire contest? This clears submissions and resets team problem progress back to Question 1.")) return;
+    setContestActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/contest/reset`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchContestInfo();
+        fetchStats();
+        fetchSubmissions();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setContestActionLoading(false);
+    }
   };
 
   const fetchStats = async () => {
@@ -352,7 +444,7 @@ export default function AdminDashboard() {
           <Link href="/leaderboard" className="text-xs text-yellow-400 hover:underline font-semibold flex items-center gap-1 bg-yellow-950/30 border border-yellow-800/40 px-3 py-1.5 rounded">
             <Award size={14} /> Leaderboard
           </Link>
-          <button onClick={() => { fetchStats(); fetchTeams(); fetchProblems(); fetchSubmissions(); fetchContestTime(); }} title="Refresh All Data" className="text-gray-400 hover:text-white p-2 rounded hover:bg-[#1a1a1a]">
+          <button onClick={() => { fetchStats(); fetchTeams(); fetchProblems(); fetchSubmissions(); fetchContestInfo(); }} title="Refresh All Data" className="text-gray-400 hover:text-white p-2 rounded hover:bg-[#1a1a1a]">
             <RefreshCw size={15} />
           </button>
         </div>
@@ -361,6 +453,151 @@ export default function AdminDashboard() {
       {/* Main Body */}
       <div className="flex-1 p-8 max-w-7xl w-full mx-auto space-y-8 overflow-y-auto">
         
+        {/* Contest Event Lifecycle Control Center */}
+        <div className="bg-[#0e0e0e] border border-[#262626] rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl relative overflow-hidden">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs text-gray-400 font-mono font-bold uppercase tracking-wider">EVENT STATUS:</span>
+              <span className={`text-xs font-mono font-bold px-3.5 py-1 rounded-full border flex items-center gap-2 ${
+                contestInfo?.status === "RUNNING"
+                  ? "bg-green-950/60 text-green-400 border-green-700 shadow-lg shadow-green-900/20"
+                  : contestInfo?.status === "FINISHED"
+                  ? "bg-red-950/60 text-red-400 border-red-700"
+                  : "bg-yellow-950/60 text-yellow-400 border-yellow-700"
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${
+                  contestInfo?.status === "RUNNING" ? "bg-green-400 animate-ping" : contestInfo?.status === "FINISHED" ? "bg-red-400" : "bg-yellow-400"
+                }`} />
+                {contestInfo?.status === "RUNNING" ? "LIVE (RUNNING)" : contestInfo?.status === "FINISHED" ? "CONCLUDED" : "STANDING BY (NOT STARTED)"}
+              </span>
+            </div>
+
+            <div className="h-4 w-px bg-[#262626] hidden md:block" />
+
+            <div className="text-xs text-gray-300 font-mono hidden md:block">
+              <span className="text-gray-500 mr-1.5">Championship:</span>
+              <span className="font-bold text-white">{contestInfo?.name || "Final Round Championship"}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {contestInfo?.status !== "RUNNING" ? (
+              <button
+                onClick={() => setShowStartModal(true)}
+                disabled={contestActionLoading}
+                className="bg-green-500 hover:bg-green-400 text-black font-bold text-xs px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-green-500/20 active:scale-98 cursor-pointer"
+              >
+                <Play size={14} fill="currentColor" />
+                <span>Start Championship Event</span>
+              </button>
+            ) : (
+              <button
+                onClick={handlePauseContest}
+                disabled={contestActionLoading}
+                className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-lg active:scale-98 cursor-pointer"
+              >
+                <Pause size={14} fill="currentColor" />
+                <span>Pause Event</span>
+              </button>
+            )}
+
+            {contestInfo?.status === "RUNNING" && (
+              <button
+                onClick={handleEndContest}
+                disabled={contestActionLoading}
+                className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-lg active:scale-98 cursor-pointer"
+              >
+                <Square size={14} fill="currentColor" />
+                <span>End Event</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleResetContest}
+              disabled={contestActionLoading}
+              title="Reset contest state & submissions"
+              className="bg-[#181818] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white font-bold text-xs px-3.5 py-2.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <RotateCcw size={13} />
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Start Championship Modal */}
+        {showStartModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#222] pb-3">
+                <div className="flex items-center gap-2">
+                  <Play size={18} className="text-green-400" />
+                  <h3 className="text-base font-bold text-white">Start Championship Event</h3>
+                </div>
+                <button onClick={() => setShowStartModal(false)} className="text-gray-400 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs font-mono">
+                <p className="text-gray-400 leading-relaxed">
+                  Starting the event will immediately unlock the problem set and Monaco code editor for all participant teams currently waiting in the lobby.
+                </p>
+
+                <div className="space-y-1.5">
+                  <label className="text-gray-300 font-bold block">Contest Duration (Minutes)</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[60, 120, 180, 240].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setDurationInput(mins)}
+                        className={`py-2 rounded-lg border font-bold ${
+                          durationInput === mins
+                            ? "bg-white text-black border-white"
+                            : "bg-[#161616] text-gray-400 border-[#2b2b2b] hover:border-gray-500"
+                        }`}
+                      >
+                        {mins} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-gray-300 font-bold block">Custom Minutes</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value={durationInput}
+                    onChange={(e) => setDurationInput(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-[#161616] border border-[#2b2b2b] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#222]">
+                <button
+                  type="button"
+                  onClick={() => setShowStartModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartContest}
+                  disabled={contestActionLoading}
+                  className="bg-green-500 hover:bg-green-400 text-black font-bold text-xs px-5 py-2.5 rounded-lg flex items-center gap-1.5 shadow-lg cursor-pointer"
+                >
+                  <Play size={13} fill="currentColor" /> Start Now ({durationInput}m)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-[#111] border border-[#222] p-4 rounded-xl">

@@ -67,6 +67,16 @@ public class ContestController {
     @GetMapping("/problems")
     public ResponseEntity<?> getProblems() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean isAdmin = "admin".equalsIgnoreCase(username);
+
+        Contest contest = contestRepository.findAll().stream().findFirst().orElse(null);
+        if (!isAdmin && (contest == null || contest.getStatus() != ContestStatus.RUNNING)) {
+            return ResponseEntity.status(403).body(Map.of(
+                "error", "The contest has not started yet. Please wait in the lobby.",
+                "status", contest != null ? contest.getStatus().name() : "NOT_STARTED"
+            ));
+        }
+
         Team team = teamRepository.findById(username).orElse(null);
         int currentUnlocked = (team != null && team.getCurrentProblem() != null) ? team.getCurrentProblem() : 1;
         int teamYear = (team != null && team.getYear() != null) ? team.getYear() : 1;
