@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: judge
+
+server:
+  port: 8081
+
+backend:
+  internal-url: ${BACKEND_INTERNAL_URL:http://localhost:8080}
+
+judge:
+  secret: ${JUDGE_SHARED_SECRET:judge_secret_for_development_only}
+  worker-id: ${HOSTNAME:local-worker-1}
+  poll-interval-ms: 2000
+
+logging:
+  level:
+    root: INFO
+    com.contest.judge: DEBUG
+

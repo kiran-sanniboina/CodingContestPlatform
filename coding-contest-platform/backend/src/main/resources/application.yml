@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: platform
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://admin:password@localhost:27017/contest?authSource=admin}
+      database: ${MONGODB_DATABASE:contest}
+
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET:super_secret_jwt_key_for_development_only_12345}
+  expiration: 86400000 # 24 hours
+
+judge:
+  secret: ${JUDGE_SHARED_SECRET:judge_secret_for_development_only}
+  worker-url: ${JUDGE_WORKER_URL:http://judge-worker:8081}
+
+logging:
+  level:
+    root: INFO
+    com.contest.platform: DEBUG

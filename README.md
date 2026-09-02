@@ -1,0 +1,119 @@
+# 🏆 Coding Contest Platform
+
+A high-performance, containerized, multi-track coding contest and automated code evaluation platform built with Next.js 16, Spring Boot 3.2, MongoDB, and isolated Docker execution sandboxes.
+
+---
+
+## 📐 Architecture Overview
+
+```mermaid
+graph TD
+    User["👨‍💻 Participant Browser (Local / LAN / Tunnel)"]
+    AdminUser["🛡️ Contest Administrator"]
+    
+    subgraph "Docker Compose Network (contest_network)"
+        Frontend["🌐 Next.js Frontend (:3000)<br/>• Dynamic Code Editor (Monaco)<br/>• Realtime Leaderboard<br/>• API Catch-All Proxy (/api/*)"]
+        Backend["⚙️ Spring Boot Backend (:8080)<br/>• JWT Authentication & RBAC<br/>• Problem Tracks (Years 1-4)<br/>• Sequential Problem Unlocks<br/>• Submission Queue & Results<br/>• Dual-Layer Dry-Run Engine"]
+        Database[("🗄️ MongoDB (:27017)<br/>• Contests, Problems, Teams<br/>• Users, Submissions, TestCases")]
+        JudgeWorker["⚡ Judge Worker (:8081)<br/>• Background Queue Poller<br/>• Instant Dry-Run Runner<br/>• Docker-in-Docker Execution<br/>• Java 21 / C++20 / Python 3"]
+    end
+
+    User -->|HTTP / WS| Frontend
+    AdminUser -->|HTTP / WS| Frontend
+    Frontend -->|Internal Proxy /api/*| Backend
+    Backend -->|Read / Write| Database
+    JudgeWorker -->|Poll Jobs & Post Results| Backend
+    Backend -.->|Direct HTTP Dry-Run (Candidate URLs)| JudgeWorker
+```
+
+---
+
+## 🛠️ Evolution & Major Fixes Log
+
+Here is a summary of all architectural improvements and bug fixes applied throughout development:
+
+### 1. Chrome Private Network Access (PNA) & CORS
+* **Issue:** When exposing the frontend over an HTTPS tunnel (Cloudflare, Pinggy, Ngrok), Chrome blocked browser JavaScript from connecting to `http://localhost:8080` (Private Network Access / Loopback restriction).
+* **Fix:** Implemented a **Catch-All API Proxy Route Handler** in Next.js (`src/app/api/[...path]/route.ts`) and configured `API_BASE_URL=""`. All browser requests go to the same origin (`/api/...`), and Next.js proxies them directly to the backend over the internal Docker network.
+
+### 2. Sample Execution Engine (`Run Sample`)
+* **Issue:** `POST /run` returned `404 Not Found` because `RunController.java` was missing and trailing slash URLs resulted in `//run` double slashes.
+* **Fix:** 
+  - Implemented `RunController.java` with multi-path mapping (`/run`, `/api/run`, `/run/`).
+  - Added URL normalization in `SubmissionController.java`.
+  - Upgraded `SubmissionController.java` with a **Dual-Layer Runner**: it tries direct HTTP across multiple candidate URLs and automatically falls back to the reliable background queue worker if direct HTTP is unavailable.
+
+### 3. Java & Next.js Build Compilation Errors
+* **Issue:** Duplicate variable declarations in `SubmissionController.java`, truncated syntax in `AuthController.java`, and duplicate code blocks in `admin/page.tsx` broke Maven and Turbopack builds.
+* **Fix:** Cleaned up and verified compilation for all backend Java controllers and confirmed 100% clean Next.js production builds (`npm run build`).
+
+### 4. Authentication & Password Synchronization
+* **Issue:** Login failed when MongoDB retained older user records with outdated password hashes.
+* **Fix:** Updated `DataInitializer.java` to perform dynamic upserts and re-encode fresh BCrypt password hashes for default accounts (`admin`/`admin123` and `team1`/`password123`) on every startup. Added case-insensitive username lookups and null-safe role handling.
+
+### 5. Docker Compose Network & Port Configurations
+* **Issue:** Containers were unable to resolve each other when ports and aliases were misconfigured.
+* **Fix:** Unified `docker-compose.yml` with port publishing for all services (`3000`, `8080`, `8081`, `27017`), connected all containers to `contest_network`, and set `BACKEND_INTERNAL_URL=http://backend:8080`.
+
+---
+
+## 🚀 Quickstart Guide
+
+### 1. Clone & Start with Docker Compose
+```bash
+git clone https://github.com/kiran-sanniboina/CodingContestWeb.git
+cd CodingContestWeb/coding-contest-platform/infrastructure
+
+# Build and start all 4 services
+docker compose up -d --build
+```
+
+### 2. Verify Container Health
+```bash
+docker ps
+```
+You should see:
+- `contest_frontend` (Port `3000`)
+- `contest_backend` (Port `8080`)
+- `contest_judge_worker` (Port `8081`)
+- `contest_mongodb` (Port `27017`)
+
+---
+
+## 🌐 Exposing the Platform to Participants
+
+### Option A: Local Wi-Fi / LAN (Zero Latency - Recommended for Labs)
+1. Find your machine's IP address:
+   ```bash
+   hostname -I | awk '{print $1}'
+   ```
+2. Have participants open `http://<YOUR_LOCAL_IP>:3000` in their browser.
+
+### Option B: High-Stability SSH Tunnel (Pinggy)
+```bash
+ssh -p 443 -R 0:localhost:3000 qr@a.pinggy.io
+```
+Provides an instant HTTPS URL with no sign-up or local configuration needed.
+
+### Option C: Ngrok
+```bash
+ngrok http 3000
+```
+
+---
+
+## 🔑 Default Credentials
+
+| Role | Username | Password | Access |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin` | `admin123` | Full Admin Dashboard (`/admin`), Team Management, Problem Creator |
+| **Team 1** | `team1` | `password123` | Coding Arena (`/`), Monaco Editor, Submissions, Leaderboard |
+
+---
+
+## 📚 Problem Sets Seeded
+
+* **Year 1 (Introductory):** Signal Cipher (Strings/HashMaps), Array Subsegment Energy (Kadane's Algorithm)
+* **Year 2 (Intermediate):** Reactor Grid (2D DP / Grid Paths), Asteroid Orbit Sync (Greedy Interval Scheduling)
+* **Year 3 (Advanced):** Quantum Nexus (Dijkstra's / Graph Shortest Path), Subspace Knapsack (0/1 DP Knapsack)
+* **Year 4 (Expert):** Galactic Core Protocol (Kahn's Topological Sort), Max Flow Pipeline (Edmonds-Karp / Dinic's Flow)

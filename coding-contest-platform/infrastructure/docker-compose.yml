@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: contest_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - contest_network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: contest_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/contest?authSource=admin
+      - JWT_SECRET=super_secret_jwt_key_for_development_only_12345
+      - JUDGE_SHARED_SECRET=judge_secret_for_development_only
+      - JUDGE_WORKER_URL=http://judge-worker:8081
+      - CONTEST_ENV=dev
+    depends_on:
+      - mongodb
+    networks:
+      - contest_network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: contest_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+    depends_on:
+      - backend
+    networks:
+      - contest_network
+
+  judge-worker:
+    build:
+      context: ../judge-worker
+      dockerfile: Dockerfile
+    container_name: contest_judge_worker
+    environment:
+      - BACKEND_INTERNAL_URL=http://backend:8080
+      - JUDGE_SHARED_SECRET=judge_secret_for_development_only
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - backend
+    networks:
+      - contest_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  contest_network:
+    driver: bridge
