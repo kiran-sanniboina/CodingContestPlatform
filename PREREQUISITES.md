@@ -157,3 +157,4 @@ Before starting the contest, run this quick check:
 - [ ] Port `3000` is open and accessible
 - [ ] Contest repository cloned (`git clone https://github.com/kiran-sanniboina/CodingContestPlatform.git`)
 - [ ] Containers built and started (`docker compose up -d --build`)
+
