@@ -72,7 +72,7 @@ public class RunController {
             }
             long elapsed = System.currentTimeMillis() - start;
 
-            return ResponseEntity.ok(createResponse(execRes.getVerdict(), execRes.getStdout(), execRes.getStderr(), (int) elapsed));
+            return ResponseEntity.ok(createResponse(execRes.getVerdict(), execRes.getStdout(), execRes.getStderr(), (int) elapsed, input, expected));
 
         } catch (Exception e) {
             log.error("Sample execution error", e);
@@ -91,11 +91,17 @@ public class RunController {
     }
 
     private Map<String, Object> createResponse(Verdict verdict, String stdout, String stderr, int executionTimeMs) {
+        return createResponse(verdict, stdout, stderr, executionTimeMs, "", "");
+    }
+
+    private Map<String, Object> createResponse(Verdict verdict, String stdout, String stderr, int executionTimeMs, String input, String expectedOutput) {
         Map<String, Object> resp = new HashMap<>();
         resp.put("verdict", verdict.name());
         resp.put("status", verdict.name());
         resp.put("stdout", stdout != null ? stdout : "");
         resp.put("stderr", stderr != null ? stderr : "");
+        resp.put("input", input != null ? input : "");
+        resp.put("expectedOutput", expectedOutput != null ? expectedOutput : "");
         resp.put("executionTimeMs", executionTimeMs);
         return resp;
     }

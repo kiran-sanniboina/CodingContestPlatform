@@ -58,7 +58,11 @@ public class TestCaseRunner {
 
                 if (execRes.getVerdict() != Verdict.ACCEPTED) {
                     result.setVerdict(execRes.getVerdict());
-                    result.setFailedTest("Test #" + tc.getOrder());
+                    result.setFailedTest("Test #" + (tc.getOrder() != null ? tc.getOrder() : (passed + 1)));
+                    result.setFailedInput(tc.getInput());
+                    result.setExpectedOutput(tc.getExpectedOutput());
+                    result.setActualOutput(execRes.getStdout());
+                    result.setStderr(execRes.getStderr());
                     result.setExecutionTimeMs(totalTime);
                     result.setPassedTests(passed);
                     return result;
@@ -124,6 +128,10 @@ public class TestCaseRunner {
                 if (execRes.getVerdict() != Verdict.ACCEPTED) {
                     result.setVerdict(execRes.getVerdict());
                     result.setFailedTest(inFile.getFileName().toString());
+                    result.setFailedInput(input);
+                    result.setExpectedOutput(expected);
+                    result.setActualOutput(execRes.getStdout());
+                    result.setStderr(execRes.getStderr());
                     result.setExecutionTimeMs(totalTime);
                     result.setPassedTests(passed);
                     return result;

@@ -49,6 +49,8 @@ public class JudgeWorker {
                     JobResult res = new JobResult();
                     res.setSubmissionId(job.getSubmissionId());
                     res.setVerdict(Verdict.COMPILATION_ERROR);
+                    res.setStderr(compRes.getStderr());
+                    res.setActualOutput(compRes.getStdout());
                     client.submitResult(res);
                     return;
                 }
@@ -58,6 +60,8 @@ public class JudgeWorker {
                     JobResult res = new JobResult();
                     res.setSubmissionId(job.getSubmissionId());
                     res.setVerdict(Verdict.COMPILATION_ERROR);
+                    res.setStderr(compRes.getStderr());
+                    res.setActualOutput(compRes.getStdout());
                     client.submitResult(res);
                     return;
                 }
@@ -67,6 +71,8 @@ public class JudgeWorker {
                     JobResult res = new JobResult();
                     res.setSubmissionId(job.getSubmissionId());
                     res.setVerdict(Verdict.COMPILATION_ERROR);
+                    res.setStderr(compRes.getStderr());
+                    res.setActualOutput(compRes.getStdout());
                     client.submitResult(res);
                     return;
                 }
@@ -82,6 +88,7 @@ public class JudgeWorker {
             JobResult res = new JobResult();
             res.setSubmissionId(job.getSubmissionId());
             res.setVerdict(Verdict.SYSTEM_ERROR);
+            res.setStderr(e.getMessage());
             client.submitResult(res);
         } finally {
             if (workDir != null) {

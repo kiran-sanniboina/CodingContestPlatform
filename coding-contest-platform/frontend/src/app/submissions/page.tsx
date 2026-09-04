@@ -14,7 +14,11 @@ interface Submission {
   passedTests: number;
   totalTests: number;
   executionTimeMs: number;
-  failedTest: string;
+  failedTest?: string;
+  failedInput?: string;
+  expectedOutput?: string;
+  actualOutput?: string;
+  stderr?: string;
   sourceCode: string;
   submittedAt: string;
 }
@@ -224,6 +228,69 @@ export default function Submissions() {
                         Close
                       </button>
                     </div>
+                  </div>
+                  {/* Failed Test Breakdown If Failed */}
+                  {sub.failedTest && (
+                    <div className="bg-[#141414] border border-red-900/50 rounded-lg p-3.5 space-y-3 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-red-400 font-bold text-xs flex items-center gap-1.5">
+                          <XCircle size={14} className="text-red-400" />
+                          Failed Test Case: <strong className="text-white font-mono">{sub.failedTest}</strong>
+                        </span>
+                        {sub.passedTests !== undefined && sub.totalTests !== undefined && (
+                          <span className="text-[11px] text-gray-400 font-mono">
+                            Passed {sub.passedTests} of {sub.totalTests} tests
+                          </span>
+                        )}
+                      </div>
+
+                      {sub.failedInput && (
+                        <div>
+                          <div className="text-gray-400 text-[10px] uppercase font-bold mb-1">Failed Test Input:</div>
+                          <pre className="bg-[#0a0a0a] border border-[#262626] p-2.5 rounded text-gray-200 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                            {sub.failedInput}
+                          </pre>
+                        </div>
+                      )}
+
+                      {(sub.actualOutput !== undefined || sub.expectedOutput !== undefined) && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-[#0a0a0a] border border-red-900/40 rounded p-2.5">
+                            <div className="text-red-400 text-[10px] uppercase font-bold mb-1 flex items-center justify-between">
+                              <span>Your Output:</span>
+                              <span className="text-[10px] text-red-500 font-normal">Wrong</span>
+                            </div>
+                            <pre className="text-red-200 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                              {sub.actualOutput || "<no output>"}
+                            </pre>
+                          </div>
+                          <div className="bg-[#0a0a0a] border border-green-900/40 rounded p-2.5">
+                            <div className="text-green-400 text-[10px] uppercase font-bold mb-1 flex items-center justify-between">
+                              <span>Expected Output:</span>
+                              <span className="text-[10px] text-green-500 font-normal">Expected</span>
+                            </div>
+                            <pre className="text-green-200 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                              {sub.expectedOutput || "<no output>"}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+
+                      {sub.stderr && (
+                        <div className="bg-[#1a0f0f] border border-red-900/60 rounded p-2.5 text-red-300 space-y-1">
+                          <div className="text-[10px] uppercase font-bold text-red-400 flex items-center gap-1">
+                            <AlertOctagon size={11} /> Error Diagnostics / Stderr:
+                          </div>
+                          <pre className="text-xs font-mono text-red-200 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                            {sub.stderr}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="text-gray-400 text-[11px] uppercase font-bold mb-1.5 flex items-center gap-1">
+                    <Code size={12} /> Submitted Source Code:
                   </div>
                   <pre className="p-4 bg-black border border-[#222] rounded-lg text-xs font-mono text-gray-200 overflow-x-auto max-h-96 leading-relaxed">
                     {sub.sourceCode}

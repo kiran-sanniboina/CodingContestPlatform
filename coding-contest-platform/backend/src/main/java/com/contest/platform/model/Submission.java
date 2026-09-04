@@ -18,6 +18,10 @@ public class Submission {
     private Integer totalTests;
     private Long executionTimeMs;
     private String failedTest;
+    private String failedInput;
+    private String expectedOutput;
+    private String actualOutput;
+    private String stderr;
     private Instant submittedAt;
 
     public String getId() { return id; }
@@ -49,6 +53,18 @@ public class Submission {
 
     public String getFailedTest() { return failedTest; }
     public void setFailedTest(String failedTest) { this.failedTest = failedTest; }
+
+    public String getFailedInput() { return failedInput; }
+    public void setFailedInput(String failedInput) { this.failedInput = failedInput; }
+
+    public String getExpectedOutput() { return expectedOutput; }
+    public void setExpectedOutput(String expectedOutput) { this.expectedOutput = expectedOutput; }
+
+    public String getActualOutput() { return actualOutput; }
+    public void setActualOutput(String actualOutput) { this.actualOutput = actualOutput; }
+
+    public String getStderr() { return stderr; }
+    public void setStderr(String stderr) { this.stderr = stderr; }
 
     public Instant getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(Instant submittedAt) { this.submittedAt = submittedAt; }

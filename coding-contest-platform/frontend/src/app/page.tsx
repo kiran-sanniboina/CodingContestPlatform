@@ -808,12 +808,14 @@ export default function ContestDashboard() {
                       </div>
 
                       {/* Compilation or Runtime Error Display */}
-                      {resultMsg.error && (
+                      {(resultMsg.error || resultMsg.stderr) && (
                         <div className="bg-[#1a0f0f] border border-red-900/60 rounded p-3 text-red-300 space-y-1">
                           <div className="text-[11px] uppercase tracking-wider font-bold text-red-400 flex items-center gap-1">
-                            <AlertOctagon size={12} /> Error Output:
+                            <AlertOctagon size={12} /> Error Diagnostics:
                           </div>
-                          <pre className="text-xs font-mono text-red-200 whitespace-pre-wrap leading-relaxed">{resultMsg.error}</pre>
+                          <pre className="text-xs font-mono text-red-200 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                            {resultMsg.stderr || resultMsg.error}
+                          </pre>
                         </div>
                       )}
 
@@ -824,21 +826,75 @@ export default function ContestDashboard() {
 
                       {/* Test Case Failure Details */}
                       {resultMsg.failedTest && (
-                        <div className="text-red-400">
-                          Failed on hidden test case: <strong className="text-red-300">{resultMsg.failedTest}</strong>
+                        <div className="bg-[#141414] border border-red-900/50 rounded-lg p-3.5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-red-400 font-bold text-xs flex items-center gap-1.5">
+                              <XCircle size={14} className="text-red-400" />
+                              Failed Test Case: <strong className="text-white font-mono">{resultMsg.failedTest}</strong>
+                            </span>
+                            {resultMsg.passedTests !== undefined && resultMsg.totalTests !== undefined && (
+                              <span className="text-[11px] text-gray-400 font-mono">
+                                Passed {resultMsg.passedTests} of {resultMsg.totalTests} tests
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Test Input */}
+                          {resultMsg.failedInput !== undefined && (
+                            <div>
+                              <div className="text-gray-400 text-[10px] uppercase font-bold mb-1">Failed Test Input:</div>
+                              <pre className="bg-[#0a0a0a] border border-[#262626] p-2.5 rounded text-gray-200 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                {resultMsg.failedInput || "<empty input>"}
+                              </pre>
+                            </div>
+                          )}
+
+                          {/* Comparison: Your Output vs Expected Output */}
+                          {(resultMsg.actualOutput !== undefined || resultMsg.expectedOutput !== undefined) && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-[#0a0a0a] border border-red-900/40 rounded p-2.5">
+                                <div className="text-red-400 text-[10px] uppercase font-bold mb-1 flex items-center justify-between">
+                                  <span>Your Output:</span>
+                                  <span className="text-[10px] text-red-500 font-normal">Wrong</span>
+                                </div>
+                                <pre className="text-red-200 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                  {resultMsg.actualOutput !== undefined && resultMsg.actualOutput !== "" ? resultMsg.actualOutput : "<no output>"}
+                                </pre>
+                              </div>
+                              <div className="bg-[#0a0a0a] border border-green-900/40 rounded p-2.5">
+                                <div className="text-green-400 text-[10px] uppercase font-bold mb-1 flex items-center justify-between">
+                                  <span>Expected Output:</span>
+                                  <span className="text-[10px] text-green-500 font-normal">Expected</span>
+                                </div>
+                                <pre className="text-green-200 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                  {resultMsg.expectedOutput !== undefined && resultMsg.expectedOutput !== "" ? resultMsg.expectedOutput : "<no output>"}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {/* Output Comparison for Sample Runs */}
-                      {resultMsg.stdout !== undefined && (
-                        <div className="grid grid-cols-2 gap-3 pt-1">
-                          <div className="bg-[#121212] border border-[#262626] rounded p-2.5">
-                            <div className="text-gray-500 text-[10px] uppercase font-bold mb-1">Your Output:</div>
-                            <pre className="text-gray-200 font-mono whitespace-pre-wrap">{resultMsg.stdout || "<no output>"}</pre>
-                          </div>
-                          <div className="bg-[#121212] border border-[#262626] rounded p-2.5">
-                            <div className="text-gray-500 text-[10px] uppercase font-bold mb-1">Expected Output:</div>
-                            <pre className="text-gray-200 font-mono whitespace-pre-wrap">{resultMsg.expectedOutput || "<none>"}</pre>
+                      {/* Output Comparison for Sample Runs (when failedTest is not set, e.g. dry-run /run) */}
+                      {!resultMsg.failedTest && (resultMsg.stdout !== undefined || resultMsg.expectedOutput !== undefined || resultMsg.input !== undefined) && (
+                        <div className="space-y-3">
+                          {resultMsg.input !== undefined && resultMsg.input !== "" && (
+                            <div>
+                              <div className="text-gray-500 text-[10px] uppercase font-bold mb-1">Input:</div>
+                              <pre className="bg-[#121212] border border-[#262626] p-2.5 rounded text-gray-200 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                {resultMsg.input}
+                              </pre>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-3 pt-1">
+                            <div className="bg-[#121212] border border-[#262626] rounded p-2.5">
+                              <div className="text-gray-500 text-[10px] uppercase font-bold mb-1">Your Output:</div>
+                              <pre className="text-gray-200 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">{resultMsg.stdout || "<no output>"}</pre>
+                            </div>
+                            <div className="bg-[#121212] border border-[#262626] rounded p-2.5">
+                              <div className="text-gray-500 text-[10px] uppercase font-bold mb-1">Expected Output:</div>
+                              <pre className="text-gray-200 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">{resultMsg.expectedOutput || "<none>"}</pre>
+                            </div>
                           </div>
                         </div>
                       )}
