@@ -20,7 +20,7 @@ public class ExecutionService {
     }
 
     public ExecutionResult runCppTest(Path workDir, String input, String expectedOutput, int memoryLimitMb, int timeoutMs) {
-        return runTest(workDir, input, expectedOutput, memoryLimitMb, timeoutMs, "gcc:13", new String[]{"sh", "-c", "./main < input.txt"});
+        return runTest(workDir, input, expectedOutput, memoryLimitMb, timeoutMs, "gcc:13", new String[]{"sh", "-c", "chmod +x ./main 2>/dev/null; ./main < input.txt"});
     }
 
     public ExecutionResult runPythonTest(Path workDir, String input, String expectedOutput, int memoryLimitMb, int timeoutMs) {
