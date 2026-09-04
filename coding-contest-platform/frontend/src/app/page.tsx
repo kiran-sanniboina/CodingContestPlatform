@@ -68,6 +68,16 @@ int main() {
     
     return 0;
 }`,
+  C: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+int main() {
+    // Write your solution here
+    
+    return 0;
+}`,
   PYTHON: `import sys
 
 def main():
@@ -411,6 +421,7 @@ export default function ContestDashboard() {
                         : "bg-[#121212] text-gray-400 border-[#262626] hover:border-gray-500 hover:text-white"
                     }`}
                   >
+                    {lang === "JAVA" ? "Java 21" : lang === "CPP" ? "C++ 20" : lang === "C" ? "C (GCC 13)" : "Python 3"}
                   </button>
                 ))}
               </div>
@@ -673,10 +684,11 @@ export default function ContestDashboard() {
               <select
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value)}
-                className="bg-[#171717] border border-[#333] text-xs rounded px-2 py-1 outline-none text-white font-mono hover:border-gray-500 transition-colors"
+                className="bg-[#171717] border border-[#333] text-xs rounded px-2 py-1 outline-none text-white font-mono hover:border-gray-500 transition-colors cursor-pointer"
               >
                 <option value="JAVA">Java 21 (Temurin)</option>
                 <option value="CPP">C++ 20 (GCC 13)</option>
+                <option value="C">C (GCC 13)</option>
                 <option value="PYTHON">Python 3</option>
               </select>
             </div>
@@ -697,6 +709,7 @@ export default function ContestDashboard() {
             <Editor
               height="100%"
               theme="vs-dark"
+              language={language === "JAVA" ? "java" : (language === "CPP" || language === "C") ? "cpp" : "python"}
               value={code}
               onChange={(val) => setCode(val || "")}
               options={{
