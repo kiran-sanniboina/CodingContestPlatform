@@ -472,14 +472,14 @@ export default function ContestDashboard() {
             <div className="space-y-2">
               <h1 className="text-2xl font-black text-white">CHAMPIONSHIP HAS ENDED</h1>
               <p className="text-xs text-gray-400 font-mono">
-                Submissions are now closed. You can view the final verified standings on the leaderboard.
+                Submissions are now closed. Thank you for participating! Final results will be announced by contest administrators.
               </p>
             </div>
             <Link
-              href="/leaderboard"
-              className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2 shadow-lg"
+              href="/submissions"
+              className="w-full bg-[#1c1c1c] text-white border border-[#333] font-bold py-3 rounded-lg hover:bg-[#252525] transition-all flex items-center justify-center gap-2 shadow-lg"
             >
-              <Trophy size={16} /> View Final Leaderboard
+              <History size={16} /> View My Submissions
             </Link>
           </div>
         </main>
@@ -563,12 +563,8 @@ export default function ContestDashboard() {
             <span className="text-gray-200 font-semibold">{timeLeft}</span>
           </div>
 
-          <Link href="/leaderboard" className="text-xs text-gray-400 hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded hover:bg-[#1a1a1a] transition-colors">
-            <Trophy size={14} className="text-yellow-500" /> <span className="hidden md:inline">Leaderboard</span>
-          </Link>
-
-          <Link href="/submissions" className="text-xs text-gray-400 hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded hover:bg-[#1a1a1a] transition-colors">
-            <History size={14} /> <span className="hidden md:inline">Submissions</span>
+          <Link href="/submissions" className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 px-2.5 py-1.5 rounded hover:bg-[#1a1a1a] transition-colors">
+            <History size={14} /> <span className="hidden md:inline">My Submissions</span>
           </Link>
 
           <div className="h-4 w-px bg-[#262626]"></div>

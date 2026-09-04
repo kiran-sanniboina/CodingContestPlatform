@@ -10,7 +10,7 @@ import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"teams" | "problems" | "testcases" | "submissions">("problems");
+  const [activeTab, setActiveTab] = useState<"teams" | "problems" | "testcases" | "submissions" | "leaderboard">("problems");
   
   // Teams State
   const [teams, setTeams] = useState<any[]>([]);
@@ -30,6 +30,10 @@ export default function AdminDashboard() {
 
   // Submissions State
   const [allSubmissions, setAllSubmissions] = useState<any[]>([]);
+
+  // Leaderboard State (Admin only)
+  const [leaderboardTeams, setLeaderboardTeams] = useState<any[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Overview Stats & Live Contest Timer
   const [stats, setStats] = useState<any>({ totalTeams: 0, totalProblems: 0, totalSubmissions: 0, acceptedSubmissions: 0 });
@@ -68,6 +72,7 @@ export default function AdminDashboard() {
     fetchProblems();
     fetchSubmissions();
     fetchContestInfo();
+    fetchLeaderboard();
     const interval = setInterval(() => {
       fetchStats();
       fetchSubmissions();
@@ -75,6 +80,23 @@ export default function AdminDashboard() {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchLeaderboard = async () => {
+    setLeaderboardLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/leaderboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLeaderboardTeams(data);
+      }
+    } catch (e) {
+      console.error("Failed to load admin leaderboard:", e);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
 
   const fetchContestInfo = async () => {
     try {
@@ -426,6 +448,15 @@ export default function AdminDashboard() {
             }`}
           >
             <FileCode size={14} /> Submissions ({allSubmissions.length})
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("leaderboard"); fetchLeaderboard(); }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all ${
+              activeTab === "leaderboard" ? "bg-yellow-500 text-black shadow-md" : "text-yellow-400 hover:text-yellow-200 hover:bg-yellow-950/30"
+            }`}
+          >
+            <Award size={14} /> Leaderboard
           </button>
 
           {selectedProblem && (
@@ -991,6 +1022,110 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: LEADERBOARD (ADMIN ONLY) */}
+        {activeTab === "leaderboard" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-[#222] pb-4">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Award className="text-yellow-500" size={18} /> Official Contest Leaderboard
+                  <span className="text-[10px] bg-yellow-950 text-yellow-400 border border-yellow-800 px-2 py-0.5 rounded-full font-bold uppercase font-mono">
+                    Admin Confidential
+                  </span>
+                </h2>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">
+                  Live verified scores, problem solve status, and time penalties. (Hidden from participants)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/leaderboard"
+                  className="bg-[#181818] hover:bg-[#252525] border border-[#333] px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-300 flex items-center gap-1.5 transition-colors"
+                >
+                  <Eye size={13} /> Full Screen View
+                </Link>
+                <button
+                  onClick={fetchLeaderboard}
+                  className="bg-[#181818] hover:bg-[#252525] border border-[#333] px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-300 flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw size={13} className={leaderboardLoading ? "animate-spin" : ""} /> Refresh
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#0a0a0a] border border-[#262626] rounded-xl overflow-hidden shadow-2xl">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-[#121212] text-gray-400 text-xs font-semibold border-b border-[#262626] uppercase tracking-wider">
+                    <th className="py-3.5 px-4 w-16 text-center">Rank</th>
+                    <th className="py-3.5 px-4">Team</th>
+                    <th className="py-3.5 px-4 text-center">Language</th>
+                    <th className="py-3.5 px-4 w-28 text-center">Solved</th>
+                    <th className="py-3.5 px-4 text-center">Total Penalty</th>
+                    <th className="py-3.5 px-3 text-center">Q1</th>
+                    <th className="py-3.5 px-3 text-center">Q2</th>
+                    <th className="py-3.5 px-3 text-center">Q3</th>
+                    <th className="py-3.5 px-3 text-center">Q4</th>
+                    <th className="py-3.5 px-3 text-center">Q5</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1c1c1c] text-gray-300">
+                  {leaderboardTeams.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="text-center py-12 text-gray-500 font-mono text-xs">
+                        {leaderboardLoading ? "Calculating live scores..." : "No team submissions recorded yet."}
+                      </td>
+                    </tr>
+                  ) : (
+                    leaderboardTeams.map((team: any) => (
+                      <tr key={team.teamId} className="hover:bg-[#111] transition-colors">
+                        <td className="py-3.5 px-4 text-center font-bold font-mono">
+                          {team.rank === 1 ? (
+                            <span className="text-yellow-400 font-extrabold text-base">🥇 1</span>
+                          ) : team.rank === 2 ? (
+                            <span className="text-gray-300 font-extrabold text-base">🥈 2</span>
+                          ) : team.rank === 3 ? (
+                            <span className="text-amber-600 font-extrabold text-base">🥉 3</span>
+                          ) : (
+                            <span className="text-gray-500">#{team.rank}</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-white">
+                          <div className="flex items-center gap-2">
+                            <span>{team.name}</span>
+                            <span className="text-[10px] text-gray-500 font-mono font-normal">({team.teamId})</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-xs font-mono text-gray-400">
+                          {team.preferredLanguage || "JAVA"}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-green-400 font-mono">
+                          {team.solved} / 5
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono text-xs text-gray-400">
+                          {team.time}
+                        </td>
+                        {team.problems?.map((solved: boolean, idx: number) => (
+                          <td key={idx} className="py-3.5 px-3 text-center">
+                            {solved ? (
+                              <div className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 flex items-center justify-center mx-auto text-[10px] font-bold shadow-[0_0_8px_rgba(34,197,94,0.3)]">
+                                ✓
+                              </div>
+                            ) : (
+                              <div className="w-4 h-4 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] mx-auto"></div>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trophy, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Trophy, RefreshCw, CheckCircle2, XCircle, ShieldAlert, Lock } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 
 interface TeamRank {
@@ -18,13 +18,30 @@ interface TeamRank {
 export default function Leaderboard() {
   const [teams, setTeams] = useState<TeamRank[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   const fetchLeaderboard = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+    const username = typeof window !== "undefined" ? localStorage.getItem("username") : null;
+
+    const isAdmin = role === "ADMIN" || (username && username.toLowerCase() === "admin");
+    if (!token || !isAdmin) {
+      setIsAuthorized(false);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/leaderboard`);
+      const res = await fetch(`${API_BASE_URL}/api/leaderboard`, {
+        headers: { Authorization: "Bearer " + token },
+      });
       if (res.ok) {
         const data = await res.json();
         setTeams(data);
+        setIsAuthorized(true);
+      } else if (res.status === 403 || res.status === 401) {
+        setIsAuthorized(false);
       }
     } catch (err) {
       console.error("Failed to load leaderboard:", err);
@@ -39,6 +56,32 @@ export default function Leaderboard() {
     return () => clearInterval(interval);
   }, []);
 
+  if (isAuthorized === false) {
+    return (
+      <div className="min-h-screen w-screen bg-black text-white p-6 font-sans flex flex-col items-center justify-center select-none">
+        <div className="w-full max-w-md bg-[#0d0d0d] border border-red-900/40 rounded-2xl p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-full bg-red-950/40 border border-red-800/50 flex items-center justify-center mx-auto text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+            <ShieldAlert size={32} />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold text-white tracking-tight">Leaderboard Restricted</h1>
+            <p className="text-xs text-gray-400 font-mono leading-relaxed">
+              The live contest leaderboard is restricted to contest administrators. Participants cannot view standings during the competition.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/"
+              className="w-full bg-white text-black font-bold py-2.5 rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2 text-xs shadow-lg"
+            >
+              <ArrowLeft size={14} /> Back to Problems
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-screen bg-black text-white p-8 font-sans flex flex-col items-center">
       <div className="w-full max-w-5xl space-y-6">
@@ -46,16 +89,21 @@ export default function Leaderboard() {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#262626] pb-4">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-semibold bg-[#111] px-3 py-1.5 rounded border border-[#262626]">
-              <ArrowLeft size={14} /> Back to Problems
+            <Link href="/admin" className="text-gray-400 hover:text-white flex items-center gap-1.5 text-xs font-semibold bg-[#111] px-3 py-1.5 rounded border border-[#262626] transition-colors">
+              <ArrowLeft size={14} /> Back to Admin Panel
             </Link>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Trophy size={22} className="text-yellow-500" /> Contest Leaderboard
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Trophy size={22} className="text-yellow-500" /> Contest Leaderboard
+              </h1>
+              <span className="text-[10px] font-mono bg-yellow-950/50 text-yellow-400 border border-yellow-800/60 px-2 py-0.5 rounded uppercase font-bold">
+                Admin Only View
+              </span>
+            </div>
           </div>
           <button 
             onClick={fetchLeaderboard}
-            className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 bg-[#111] px-3 py-1.5 rounded border border-[#262626]"
+            className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 bg-[#111] px-3 py-1.5 rounded border border-[#262626] transition-colors"
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
           </button>

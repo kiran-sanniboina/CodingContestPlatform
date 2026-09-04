@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.*;
 
 @RestController
@@ -18,8 +19,24 @@ public class LeaderboardController {
     @Autowired
     private SubmissionRepository submissionRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    private boolean isAdmin() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        if ("admin".equalsIgnoreCase(username)) {
+            return true;
+        }
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        return userOpt.isPresent() && userOpt.get().getRole() == Role.ADMIN;
+    }
+
     @GetMapping
     public ResponseEntity<?> getLeaderboard() {
+        if (!isAdmin()) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied. Leaderboard is restricted to administrators."));
+        }
+
         List<Team> teams = teamRepository.findAll();
         List<Map<String, Object>> leaderboard = new ArrayList<>();
 
