@@ -61,15 +61,6 @@ public class JudgeWorker {
                     client.submitResult(res);
                     return;
                 }
-            } else if (lang.equals("C") || lang.equalsIgnoreCase("C")) {
-                ExecutionResult compRes = compService.compileC(workDir, job.getSourceCode());
-                if (compRes.getVerdict() != Verdict.ACCEPTED) {
-                    JobResult res = new JobResult();
-                    res.setSubmissionId(job.getSubmissionId());
-                    res.setVerdict(Verdict.COMPILATION_ERROR);
-                    client.submitResult(res);
-                    return;
-                }
             } else if (lang.contains("PYTHON")) {
                 Files.writeString(workDir.resolve("main.py"), job.getSourceCode());
             }
