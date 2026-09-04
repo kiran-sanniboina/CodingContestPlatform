@@ -34,4 +34,15 @@ public class CompilationService {
             return new ExecutionResult(Verdict.SYSTEM_ERROR, "", e.getMessage());
         }
     }
+
+    public ExecutionResult compileC(Path workDir, String sourceCode) {
+        try {
+            Files.writeString(workDir.resolve("main.c"), sourceCode);
+            return dockerExecutor.execute("gcc:13", workDir.toAbsolutePath().toString(), 
+                new String[]{"gcc", "-O2", "main.c", "-o", "main", "-lm"}, 512, 10000);
+        } catch (Exception e) {
+            log.error("Compilation error", e);
+            return new ExecutionResult(Verdict.SYSTEM_ERROR, "", e.getMessage());
+        }
+    }
 }

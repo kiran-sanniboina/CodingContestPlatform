@@ -68,6 +68,16 @@ int main() {
     
     return 0;
 }`,
+  C: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+int main() {
+    // Write your solution here
+    
+    return 0;
+}`,
   PYTHON: `import sys
 
 def main():
@@ -400,8 +410,8 @@ export default function ContestDashboard() {
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
                 Select Your Starting Language
               </label>
-              <div className="grid grid-cols-3 gap-3">
-                {["JAVA", "CPP", "PYTHON"].map((lang) => (
+              <div className="grid grid-cols-4 gap-3">
+                {["JAVA", "CPP", "C", "PYTHON"].map((lang) => (
                   <button
                     key={lang}
                     onClick={() => handleLanguageChange(lang)}
@@ -411,7 +421,7 @@ export default function ContestDashboard() {
                         : "bg-[#121212] text-gray-400 border-[#262626] hover:border-gray-500 hover:text-white"
                     }`}
                   >
-                    {lang === "JAVA" ? "Java 21" : lang === "CPP" ? "C++ 20" : "Python 3"}
+                    {lang === "JAVA" ? "Java 21" : lang === "CPP" ? "C++ 20" : lang === "C" ? "C (GCC 13)" : "Python 3"}
                   </button>
                 ))}
               </div>
@@ -678,6 +688,7 @@ export default function ContestDashboard() {
               >
                 <option value="JAVA">Java 21 (Temurin)</option>
                 <option value="CPP">C++ 20 (GCC 13)</option>
+                <option value="C">C (GCC 13)</option>
                 <option value="PYTHON">Python 3</option>
               </select>
             </div>
@@ -698,7 +709,7 @@ export default function ContestDashboard() {
             <Editor
               height="100%"
               theme="vs-dark"
-              language={language === "JAVA" ? "java" : language === "CPP" ? "cpp" : "python"}
+              language={language === "JAVA" ? "java" : (language === "CPP" || language === "C") ? "cpp" : "python"}
               value={code}
               onChange={(val) => setCode(val || "")}
               options={{

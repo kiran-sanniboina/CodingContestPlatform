@@ -44,6 +44,11 @@ public class RunController {
                 if (compRes.getVerdict() != Verdict.ACCEPTED) {
                     return ResponseEntity.ok(createResponse(Verdict.COMPILATION_ERROR, compRes.getStdout(), compRes.getStderr(), 0));
                 }
+            } else if (lang.equals("C") || lang.equalsIgnoreCase("C")) {
+                ExecutionResult compRes = compilationService.compileC(tempDir, request.getSourceCode());
+                if (compRes.getVerdict() != Verdict.ACCEPTED) {
+                    return ResponseEntity.ok(createResponse(Verdict.COMPILATION_ERROR, compRes.getStdout(), compRes.getStderr(), 0));
+                }
             } else if (lang.contains("PYTHON")) {
                 Files.writeString(tempDir.resolve("main.py"), request.getSourceCode());
             }
@@ -58,6 +63,8 @@ public class RunController {
                 execRes = executionService.runJavaTest(tempDir, input, expected, mem, time);
             } else if (lang.contains("CPP") || lang.contains("C++")) {
                 execRes = executionService.runCppTest(tempDir, input, expected, mem, time);
+            } else if (lang.equals("C") || lang.equalsIgnoreCase("C")) {
+                execRes = executionService.runCTest(tempDir, input, expected, mem, time);
             } else if (lang.contains("PYTHON")) {
                 execRes = executionService.runPythonTest(tempDir, input, expected, mem, time);
             } else {

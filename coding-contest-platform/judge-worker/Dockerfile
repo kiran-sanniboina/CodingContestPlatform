@@ -2,7 +2,7 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine as builder
 WORKDIR /app
 COPY pom.xml .
 COPY src src
-RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests
+RUN mvn package -DskipTests
 
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app

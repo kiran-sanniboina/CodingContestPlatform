@@ -45,6 +45,8 @@ public class TestCaseRunner {
                     execRes = executionService.runJavaTest(workDir, tc.getInput(), tc.getExpectedOutput(), job.getMemoryLimitMb(), job.getTimeLimitMs());
                 } else if (lang.contains("CPP") || lang.contains("C++")) {
                     execRes = executionService.runCppTest(workDir, tc.getInput(), tc.getExpectedOutput(), job.getMemoryLimitMb(), job.getTimeLimitMs());
+                } else if (lang.equals("C") || lang.equalsIgnoreCase("C")) {
+                    execRes = executionService.runCTest(workDir, tc.getInput(), tc.getExpectedOutput(), job.getMemoryLimitMb(), job.getTimeLimitMs());
                 } else if (lang.contains("PYTHON")) {
                     execRes = executionService.runPythonTest(workDir, tc.getInput(), tc.getExpectedOutput(), job.getMemoryLimitMb(), job.getTimeLimitMs());
                 } else {
@@ -108,6 +110,8 @@ public class TestCaseRunner {
                     execRes = executionService.runJavaTest(workDir, input, expected, job.getMemoryLimitMb(), job.getTimeLimitMs());
                 } else if (lang.contains("CPP") || lang.contains("C++")) {
                     execRes = executionService.runCppTest(workDir, input, expected, job.getMemoryLimitMb(), job.getTimeLimitMs());
+                } else if (lang.equals("C") || lang.equalsIgnoreCase("C")) {
+                    execRes = executionService.runCTest(workDir, input, expected, job.getMemoryLimitMb(), job.getTimeLimitMs());
                 } else if (lang.contains("PYTHON")) {
                     execRes = executionService.runPythonTest(workDir, input, expected, job.getMemoryLimitMb(), job.getTimeLimitMs());
                 } else {
